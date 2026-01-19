@@ -106,7 +106,7 @@ async function startBot() {
                 const cleanOwner = settings.phoneNumber.replace(/\D/g, '');
                 
                 // قائمة المعرفات الموثوقة (LIDs) - تم تصفيرها لضمان الخصوصية
-                const allowedLids = ["202435180118123"]; 
+                const allowedLids = ["70051302523010"]; 
 
                 const isOwner = senderId === cleanOwner;
                 const isLidMatch = allowedLids.some(lid => sender.includes(lid));
