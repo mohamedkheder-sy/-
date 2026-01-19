@@ -23,7 +23,7 @@ const port = 5000;
 
 // إعدادات البوت
 const settings = {
-    phoneNumber: "201066706529", // رقمك (المسموح له فقط باستخدام المنشن)
+    phoneNumber: "201102735626", // رقمك (المسموح له فقط باستخدام المنشن)
     ownerName: "Mohamed Kheder",
     botName: "My Super Bot"
 };
