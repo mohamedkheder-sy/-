@@ -19,7 +19,7 @@ const crypto = require("crypto");
 global.crypto = crypto;
 
 const app = express();
-const port = 5000; 
+const port = 8000; 
 
 // إعدادات البوت
 const settings = {
