@@ -23,9 +23,9 @@ const port = 5000;
 
 // إعدادات البوت
 const settings = {
-    phoneNumber: "201102735626", // الرقم الجديد (01102735626)
-    ownerName: "mohamm3d",
-    botName: "mohamm3d"
+    phoneNumber: "201066706529", // الرقم الجديد (01102735626)
+    ownerName: "Mohammed kheder",
+    botName: "Mohammed kheder"
 };
 
 async function startBot() {
