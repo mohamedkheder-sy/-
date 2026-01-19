@@ -1,0 +1,17 @@
+[Unit]
+Description=AzharBot (Baileys WhatsApp)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/youruser/azharbot
+ExecStart=/usr/bin/node /home/youruser/azharbot/index.js
+Restart=on-failure
+RestartSec=10
+User=youruser
+Environment=NODE_ENV=production
+# إذا أردت تحميل متغيرات .env أضف السطر التالي (تأكد من المسار)
+# EnvironmentFile=/home/youruser/azharbot/.env
+
+[Install]
+WantedBy=multi-user.target
