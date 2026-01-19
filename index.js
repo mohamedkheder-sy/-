@@ -23,7 +23,7 @@ const port = 5000;
 
 // إعدادات البوت
 const settings = {
-    phoneNumber: "201061475436", // رقمك (المسموح له فقط باستخدام المنشن)
+    phoneNumber: "201102735626", // الرقم الجديد (01102735626)
     ownerName: "mohamm3d",
     botName: "mohamm3d"
 };
@@ -54,3 +54,109 @@ async function startBot() {
     if (!sock.authState.creds.registered) {
         console.log("⏳ Waiting 10 seconds for server stability...");
         await delay(10000); 
+        try {
+            const code = await sock.requestPairingCode(settings.phoneNumber);
+            console.log(`\n========================================`);
+            console.log(`🔥 YOUR PAIRING CODE: ${code}`);
+            console.log(`📱 Link your phone using this code now!`);
+            console.log(`========================================\n`);
+        } catch (err) {
+            console.error('❌ Failed to get pairing code:', err.message);
+        }
+    }
+
+    // إدارة الاتصال
+    sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect } = update;
+        
+        if (connection === 'close') {
+            const reason = lastDisconnect?.error?.output?.statusCode;
+            console.log(`⚠️ Connection closed. Reason: ${reason}`);
+
+            if (reason === DisconnectReason.loggedOut) {
+                console.log('❌ Logged out. Deleting session...');
+                fs.rmSync('./auth_info', { recursive: true, force: true });
+                startBot();
+            } else {
+                startBot(); 
+            }
+        } else if (connection === 'open') {
+            console.log('✅ Connected successfully to WhatsApp!');
+        }
+    });
+
+    // معالج الرسائل
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+        try {
+            const m = messages[0];
+            if (!m.message || m.key.fromMe) return;
+
+            const text = (m.message.conversation || m.message.extendedTextMessage?.text || "").trim();
+            const remoteJid = m.key.remoteJid;
+            const sender = m.key.participant || m.key.remoteJid; // معرفة من المرسل
+
+            // 1️⃣ أمر القائمة
+            if (text === '.اوامر' || text === '.menu') {
+                const menu = `🤖 *قائمة ${settings.botName}*\n\n1️⃣ منشن\n2️⃣ .المطور\n\n👑 بواسطة: ${settings.ownerName}`;
+                await sock.sendMessage(remoteJid, { text: menu }, { quoted: m });
+            } 
+            // 2️⃣ أمر منشن (بدلاً من بنج)
+            else if (text === 'منشن') {
+                const senderId = sender.split('@')[0];
+                const cleanOwner = settings.phoneNumber.replace(/\D/g, '');
+                
+                // قائمة المعرفات الموثوقة (LIDs) - تم تصفيرها لضمان الخصوصية
+                const allowedLids = ["202435180118123"]; 
+
+                const isOwner = senderId === cleanOwner;
+                const isLidMatch = allowedLids.some(lid => sender.includes(lid));
+
+                // تسجيل المعلومات للتصحيح الصارم
+                console.log(`[AUTH_CHECK] Sender: ${sender}, ID: ${senderId}, Owner: ${cleanOwner}, Result: ${isOwner || isLidMatch}`);
+
+                if (!isOwner && !isLidMatch) {
+                    console.log(`[SECURITY] REJECTED mention from unauthorized sender: ${sender}`);
+                    return; // البوت لن يفعل أي شيء ولن يرد
+                }
+
+                // التأكد أن الأمر داخل مجموعة
+                if (remoteJid.endsWith('@g.us')) {
+                    console.log(`[DEBUG] Fetching group metadata for: ${remoteJid}`);
+                    const groupMetadata = await sock.groupMetadata(remoteJid);
+                    const participants = groupMetadata.participants.map(p => p.id);
+                    
+                    console.log(`[DEBUG] Tagging ${participants.length} participants`);
+                    
+                    // 📣 نص واضح جداً للتأكد من العمل
+                    const mentionText = '📢 *نداء عاجل للجميع من المالك* 📢'; 
+
+                    await sock.sendMessage(remoteJid, {
+                        text: mentionText,
+                        mentions: participants 
+                    }, { quoted: m });
+                    console.log(`[DEBUG] Mention sent successfully`);
+                } else {
+                    await sock.sendMessage(remoteJid, { text: '⚠️ هذا الأمر يعمل فقط داخل المجموعات!' }, { quoted: m });
+                }
+            }
+
+        } catch (err) {
+            console.error("Error processing message:", err);
+        }
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+}
+
+// حماية السيرفر
+process.on('uncaughtException', (err) => console.error("Uncaught Exception:", err));
+process.on('unhandledRejection', (err) => console.error("Unhandled Rejection:", err));
+
+// تشغيل السيرفر
+app.get('/', (req, res) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(`Bot is Running ✅`);
+});
+app.listen(port, '0.0.0.0', () => {
+    console.log(`Server is running on port ${port}`);
+    startBot();
