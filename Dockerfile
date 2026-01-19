@@ -1,4 +1,4 @@
-FROM node:18-bullseye
+FROM node:20-bullseye
 
 # تثبيت المتطلبات الضرورية للنظام (ffmpeg, imagemagick, webp)
 RUN apt-get update && \
