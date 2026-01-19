@@ -1,6 +1,6 @@
 /**
- * بوت واتساب متكامل - إصدار الإصلاح النهائي (LID Fix)
- * تم إضافة معرفك الخاص (70051302523010) ليعمل المنشن
+ * بوت واتساب متكامل - إصدار الحب والملصقات
+ * تم دمج الميزات الجديدة مع الكود الخاص بك
  */
 
 const { 
@@ -9,6 +9,7 @@ const {
     DisconnectReason, 
     makeCacheableSignalKeyStore,
     delay,
+    downloadMediaMessage, // 👈 إضافة مهمة لتحميل الصور
     fetchLatestBaileysVersion
 } = require("@whiskeysockets/baileys");
 const pino = require("pino");
@@ -18,10 +19,12 @@ const fs = require('fs');
 const app = express();
 const port = 8000;
 
+// ==========================================
+// 🛠️ الإعدادات (حسب ما أرسلت لي)
+// ==========================================
 const settings = {
-    phoneNumber: "201066706529", // رقم هاتفك
-    // 👇 هذا هو الكود السري الخاص بحسابك الذي ظهر في السجلات
-    ownerLID: "70051302523010", 
+    phoneNumber: "201066706529", // رقمك المصري الموجود في الكود
+    ownerLID: "70051302523010",   // معرفك الخاص
     ownerName: "Mohammed kheder",
     botName: "Azhar Bot 🤖"
 };
@@ -79,20 +82,62 @@ async function startBot() {
             if (!m.message || m.key.fromMe) return;
 
             const remoteJid = m.key.remoteJid;
-            const text = (m.message.conversation || m.message.extendedTextMessage?.text || "").trim();
+            // تعديل لقراءة النص من الصور أيضاً (للملصقات)
+            const text = (m.message.conversation || m.message.extendedTextMessage?.text || m.message.imageMessage?.caption || "").trim();
             const sender = m.key.participant || m.key.remoteJid;
             const isGroup = remoteJid.endsWith('@g.us');
             
-            // =========================
-            // 🛠️ التحقق من المطور (تم الإصلاح)
-            // =========================
+            // التحقق من المطور
             const cleanOwner = settings.phoneNumber.replace(/\D/g, '');
-            // نتحقق: هل المرسل هو الرقم العادي؟ أو هو الـ LID الخاص؟
             const isOwner = sender.includes(cleanOwner) || sender.includes(settings.ownerLID);
 
-            // لوحة التحكم
+            // ==========================================
+            // 🆕 1. ميزة صانع الملصقات
+            // الاستخدام: ارسل صورة واكتب تحتها "ملصق"
+            // ==========================================
+            if (text === 'ملصق' || text === 'sticker') {
+                if (m.message.imageMessage) {
+                    try {
+                        const buffer = await downloadMediaMessage(
+                            m,
+                            'buffer',
+                            { },
+                            { 
+                                logger: pino({ level: 'silent' }),
+                                reuploadRequest: sock.updateMediaMessage
+                            }
+                        );
+                        await sock.sendMessage(remoteJid, { sticker: buffer }, { quoted: m });
+                    } catch (e) {
+                        console.log(e);
+                        await sock.sendMessage(remoteJid, { text: '❌ حدث خطأ، حاول مجدداً.' }, { quoted: m });
+                    }
+                } else {
+                    await sock.sendMessage(remoteJid, { text: '⚠️ يجب إرسال صورة وكتابة "ملصق" في الشرح.' }, { quoted: m });
+                }
+            }
+
+            // ==========================================
+            // 🆕 2. ميزة مقياس الحب
+            // الاستخدام: حب @منشن
+            // ==========================================
+            if (text.startsWith('حب')) {
+                const percentage = Math.floor(Math.random() * 100) + 1;
+                let comment = "";
+                if (percentage < 25) comment = "💔 مفيش نصيب، شوف غيرها";
+                else if (percentage < 50) comment = "😐 علاقة مشكوك فيها";
+                else if (percentage < 75) comment = "😍 في إعجاب متبادل";
+                else comment = "💍 جهز الدبلة فوراً!";
+
+                await sock.sendMessage(remoteJid, { 
+                    text: `💘 *مقياس الحب:*\n\nالنسبة: ${percentage}%\nالتعليق: ${comment}` 
+                }, { quoted: m });
+            }
+
+            // لوحة التحكم (تم تحديثها)
             if (text === 'اوامر' || text === 'menu') {
                 const menu = `🤖 *بوت ${settings.botName}*\n\n` +
+                             `🆕 *الجديد:*\nملصق (مع صورة)\nحب (مع منشن)\n\n` +
                              `👮 *الإدارة:*\nطرد | قفل | فتح\n\n` +
                              `🤡 *الترفيه:*\nهكر @الضحية\n\n` +
                              `👤 *خاص:*\nمنشن\n\n` +
@@ -131,7 +176,7 @@ async function startBot() {
                     await sock.sendMessage(remoteJid, { text: '🔓 تم الفتح.' }, { quoted: m });
                 }
 
-                // 4. منشن (للمطور فقط - بالكود الجديد)
+                // 4. منشن (للمطور فقط)
                 if (text === 'منشن') {
                     if (isOwner) {
                         const mentions = participants.map(p => p.id);
@@ -140,7 +185,6 @@ async function startBot() {
                             mentions 
                         }, { quoted: m });
                     } else {
-                        // كود للتأكد: إذا لم يعمل، سيخبرك البوت برقمك في السيرفر لتضيفه
                         console.log(`⚠️ محاولة منشن مرفوضة من: ${sender}`);
                     }
                 }
@@ -174,3 +218,4 @@ app.listen(port, () => {
     console.log(`Server on port ${port}`);
     startBot();
 });
+                    
